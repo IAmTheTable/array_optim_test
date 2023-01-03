@@ -1,0 +1,10 @@
+{
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "bash nn_test.sh",
+            "problemMatcher": []
+        }
+    ]
+}

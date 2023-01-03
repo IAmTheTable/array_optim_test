@@ -15,8 +15,9 @@ template <typename T>
 class array
 {
 private:
-    T *_data;
-    int _capacity = 1;
+    T *_data = new T[64];
+    int _capacity = 64;
+    int _size = 0;
 
 public:
     /// @brief Default capacity of the array
@@ -25,46 +26,53 @@ public:
     {
         _data = new T[_capacity];
     }
-    array(T *d)
+    /*array(T *d)
     {
         _data = new T[sizeof(T) * 5];
-        std::swap(_data, d);
-    }
-    constexpr array<T> data()
+       _data = std::move(d);
+       delete d;
+    }*/
+    constexpr T *data()
     {
         return this->_data;
     }
 
     array(int size)
     {
-        this->_data = new T[size];
         this->_capacity = size;
+        this->_data = malloc(this->_capacity * sizeof(T));
     }
 
     array(const array<T> &&__data)
     {
+        _size = __data.size();
         this->_capacity = __data.size();
-        this->_data = new T[this->_capacity]{__data._data};
+        this->_data = reinterpret_cast<T *>(malloc(this->_capacity * sizeof(T)));
+        auto amt_copied = memcpy(this->_data, __data.data(), this->_capacity * sizeof(T));
+        if (amt_copied == nullptr)
+            throw std::runtime_error("[array] Failed to copy data.");
     }
     array(std::initializer_list<T> __data)
     {
-        this->_data = new T[__data.size()];
-        
-        for(auto i = 0; i < __data.size(); i++)
-            this->_data[i] = *(__data.begin() + i);
+        _size = __data.size();
+        this->_capacity = __data.size();
+
+        this->_data = reinterpret_cast<T *>(malloc(this->_capacity * sizeof(T)));
+        memcpy(this->_data, __data.begin(), this->_capacity * sizeof(T));
     }
 
     ~array()
     {
+        std::free(this->_data);
     }
 
     void set_capacity(int cap)
     {
         this->_capacity = cap;
-        auto &cpy_data = this->_data;
-        this->_data = new T[this->_capacity];
-        std::swap(this->_data, cpy_data);
-        delete[] cpy_data;
+        auto cpy_data = this->_data;
+        auto new_data = reinterpret_cast<T *>(realloc(this->_data, this->_capacity * sizeof(T)));
+        this->_data = new_data;
+        memcpy(this->_data, &cpy_data, this->_capacity * sizeof(T));
     }
 
     void set_size(int amt)
@@ -76,8 +84,7 @@ public:
         if (this == &val)
             return *this;
 
-        _data = std::exchange(val._data, nullptr); // leave other in valid state
-        delete[] & val;
+        memcpy(this->_data, val.data(), sizeof(T) * val.size()); // leave other in valid state
         return *this;
     }
     // copy assignment (copy-and-swap idiom)
@@ -86,12 +93,6 @@ public:
         std::swap(_data, other._data);
         return *this;
     } // destructor of other is called to release the resources formerly managed by *this
-
-    // mem cleanup
-    void operator delete[](void *data)
-    {
-        std::free(data);
-    }
 
     T &operator[](int idx)
     {
@@ -107,19 +108,23 @@ public:
 
     void push_back(T value)
     {
-        set_capacity(this->_capacity);
-        _data[this->_capacity] = value;
+        if (this->_size > this->_capacity)
+        {
+            set_capacity(this->_capacity);
+        }
+        _data[this->_size] = value;
+        _size++;
     }
 
     void push_back(T &value)
     {
-        if (this->_size + sizeof(value) > this->_capacity)
+        if (this->_size > this->_capacity)
         {
             set_capacity(this->_capacity);
         }
 
-        _data[this->_capacity - 1] = value;
-        this->_capacity++;
+        _data[this->_size] = value;
+        _size++;
     }
 
     void push_range(array<T> value)
