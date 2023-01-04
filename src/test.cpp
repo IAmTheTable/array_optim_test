@@ -12,89 +12,91 @@
 // and using a power of two instead of a generic size
 
 template <typename T>
-class array
+struct array
 {
 private:
-    T *_data;
-    int _capacity = 1;
+    T *_data = reinterpret_cast<T *>(malloc(sizeof(T) * _capacity));
+    int _capacity = 64;
+    int _size = 0;
 
 public:
     /// @brief Default capacity of the array
 
     array()
     {
-        _data = new T[_capacity];
+        _data = reinterpret_cast<T *>(malloc(sizeof(T) * _capacity));
     }
-    array(T *d)
+    /*array(T *d)
     {
         _data = new T[sizeof(T) * 5];
-        std::swap(_data, d);
-    }
-    constexpr array<T> data()
+       _data = std::move(d);
+       delete d;
+    }*/
+    constexpr inline T *data() const
     {
         return this->_data;
     }
 
     array(int size)
     {
-        this->_data = new T[size];
         this->_capacity = size;
+        this->_data = malloc(this->_capacity * sizeof(T));
     }
 
     array(const array<T> &&__data)
     {
+        _size = __data.size();
         this->_capacity = __data.size();
-        this->_data = new T[this->_capacity]{__data._data};
+        this->_data = reinterpret_cast<T *>(malloc(this->_capacity * sizeof(T)));
+        auto amt_copied = memcpy(this->_data, __data.data(), this->_capacity * sizeof(T));
+        if (amt_copied == nullptr)
+            throw std::runtime_error("[array] Failed to copy data.");
     }
     array(std::initializer_list<T> __data)
     {
-        this->_data = new T[__data.size()];
-        
-        for(auto i = 0; i < __data.size(); i++)
-            this->_data[i] = *(__data.begin() + i);
+        _size = __data.size();
+        this->_capacity = __data.size();
+
+        this->_data = reinterpret_cast<T *>(malloc(this->_capacity * sizeof(T)));
+        memcpy(this->_data, __data.begin(), this->_capacity * sizeof(T));
     }
 
     ~array()
     {
+        delete[] this->_data;
     }
 
     void set_capacity(int cap)
     {
+        T *cpy_data = new T[this->_capacity];
+        memcpy(cpy_data, this->_data, this->_capacity * sizeof(T));
         this->_capacity = cap;
-        auto &cpy_data = this->_data;
-        this->_data = new T[this->_capacity];
-        std::swap(this->_data, cpy_data);
-        delete[] cpy_data;
+        this->_data = reinterpret_cast<T *>(realloc(this->_data, this->_capacity * sizeof(T)));
+        memcpy(this->_data, cpy_data, this->_capacity * sizeof(T));
     }
 
-    void set_size(int amt)
-    {
-        this->_size = amt;
-    }
     array<T> &operator=(array<T> &&val) noexcept
     {
         if (this == &val)
             return *this;
 
-        _data = std::exchange(val._data, nullptr); // leave other in valid state
-        delete[] & val;
+        memcpy(this->_data, val.data(), sizeof(T) * val.size()); // leave other in valid state
         return *this;
     }
     // copy assignment (copy-and-swap idiom)
     array<T> &operator=(array<T> &other) noexcept // call copy or move constructor to construct other
     {
-        std::swap(_data, other._data);
+        if(!this->_data)
+            this->_data = malloc(other._capacity);
+        std::cout << "called set" << std::endl;
+        memcpy(this->_data, other.data(), other.size() * sizeof(T));
+        // std::swap(_data, other._data);
         return *this;
     } // destructor of other is called to release the resources formerly managed by *this
 
-    // mem cleanup
-    void operator delete[](void *data)
-    {
-        std::free(data);
-    }
-
     T &operator[](int idx)
     {
+        std::cout << "called index" << std::endl;
         if (this->_data == nullptr || idx > this->size())
             throw std::invalid_argument("[array] data, or data index not valid");
         return this->_data[idx];
@@ -102,32 +104,36 @@ public:
 
     constexpr int &size()
     {
-        return this->_capacity;
+        return this->_size;
     }
 
     void push_back(T value)
     {
-        set_capacity(this->_capacity);
-        _data[this->_capacity] = value;
+        if (this->_size + 1 > this->_capacity)
+        {
+            set_capacity(this->_capacity + 1024);
+        }
+        _data[this->_size] = value;
+        _size++;
     }
 
     void push_back(T &value)
     {
-        if (this->_size + sizeof(value) > this->_capacity)
+        if (this->_size > this->_capacity)
         {
-            set_capacity(this->_capacity);
+            set_capacity(this->_capacity + 1024);
         }
 
-        _data[this->_capacity - 1] = value;
-        this->_capacity++;
+        _data[this->_size] = value;
+        _size++;
     }
 
     void push_range(array<T> value)
     {
         if (this->_size + value.size() > this->_capacity)
         {
-            set_capacity(this->_capacity + value.size() + (sizeof(value) * 5)); // allocate the expected size plus 5 more
-            memcpy(this->_data, value.data(), value.size() * sizeof(T));
+            set_capacity(this->_capacity + value.size() + 1024); // allocate the expected size plus 5 more
+            memcpy(this->_data + (sizeof(T) * this->_size), value.data(), value.size() * sizeof(T));
         }
         else
             throw std::runtime_error("[array]Push range fail.");
@@ -137,9 +143,10 @@ public:
 int main()
 {
     array<array<double>> test{};
+    std::cout << "array size: " << sizeof(test) << std::endl;
     std::vector<std::vector<double>> test2{};
 
-    for (auto i = 0; i < 10; i++)
+    for (auto i = 0; i < UINT16_MAX; i++)
     {
         test.push_back({1});
         // test2.push_back({i * 0.25});
