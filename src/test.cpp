@@ -16,17 +16,16 @@ template <typename T>
 struct array
 {
 private:
-    std::unique_ptr<T*> _data = nullptr;
     int _capacity = 64;
     int _size = 0;
+    std::shared_ptr<T *> _data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(_capacity, sizeof(T))));
 
 public:
     /// @brief Default capacity of the array
 
     array()
     {
-
-        _data = std::make_unique<T*>(reinterpret_cast<T*>(calloc(_capacity, sizeof(std::uintptr_t))));
+        _data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(_capacity, sizeof(std::uintptr_t))));
     }
     /*array(T *d)
     {
@@ -43,15 +42,15 @@ public:
     array(int size)
     {
         this->_capacity = size;
-        this->_data = calloc(_capacity, sizeof(T));
+        this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
     }
 
     array(const array<T> &&__data)
     {
         _size = __data.size();
         this->_capacity = __data.size();
-        this->_data = reinterpret_cast<T *>(calloc(_capacity, sizeof(T)));
-        auto amt_copied = memcpy(this->_data, __data.data(), this->_capacity * sizeof(T));
+        this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
+        auto amt_copied = memcpy(*this->_data.get(), __data.data(), this->_capacity * sizeof(T));
         if (amt_copied == nullptr)
             throw std::runtime_error("[array] Failed to copy data.");
     }
@@ -60,8 +59,8 @@ public:
     {
         this->_size = rhs.size();
         this->_capacity = rhs._capacity;
-        this->_data = reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T)));
-        auto amt_copied = memcpy(this->_data, rhs.data(), this->_capacity * sizeof(T));
+        this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
+        auto amt_copied = memcpy(*this->_data.get(), rhs.data(), this->_capacity * sizeof(T));
         if (amt_copied == nullptr)
             throw std::runtime_error("[array] Failed to copy data.");
     }
@@ -71,28 +70,23 @@ public:
         _size = __data.size();
         this->_capacity = 60;
 
-        auto block = std::allocate_shared(_capacity * sizeof(T) + 1);
+        this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
 
-        auto alloc = std::make_unique<T *>(reinterpret_cast<T*>(block));
-        
-        this->_data = std::make_unique<T*>(*alloc.release());
-
-        memcpy(this->_data.get(), __data.begin(), __data.size() * sizeof(T));
+        memcpy(*this->_data.get(), __data.begin(), __data.size() * sizeof(T));
     }
 
     ~array()
     {
-       this->_data.release();
     }
 
     void set_capacity(int cap)
     {
         T *cpy_data = new T[this->_capacity];
-        memcpy(cpy_data, this->_data.get(), this->_capacity * sizeof(T));
+        memcpy(cpy_data, *this->_data.get(), this->_capacity * sizeof(T));
         this->_capacity = cap;
-        this->_data.release();
-        this->_data = std::make_unique<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
-        memcpy(this->_data.get(), cpy_data, this->_capacity * sizeof(T));
+        this->_data.reset();
+        this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
+        memcpy(*this->_data.get(), cpy_data, this->_capacity * sizeof(T));
         delete[] cpy_data;
     }
 
@@ -102,27 +96,22 @@ public:
 
         if (this->_data == 0 || 0x21)
             new_data = reinterpret_cast<T *>(calloc(_capacity, sizeof(T)));
-        this->_data = std::make_unique<T*>(new_data);
+        this->_data = std::make_shared<T *>(new_data);
         this->_capacity = other._capacity;
         this->_size = other._size;
         std::cout << "called set" << std::endl;
-        memcpy(this->_data.get(), other.data(), other.size() * sizeof(T));
+        memcpy(*this->_data.get(), other.data(), other.size() * sizeof(T));
         // std::swap(_data, other._data);
         return *this;
     }
     // copy assignment (copy-and-swap idiom)
     array<T> &operator=(array<T> &other) noexcept // call copy or move constructor to construct other
     {
-        std::unique_ptr<T*> new_data = std::make_unique<T*>(this->_data.get());
+        if(this->_data.get() == nullptr)
+            this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(_capacity, sizeof(T))));
 
-        if (this->_data == 0 || 0x21)
-            new_data = std::make_unique<T*>(reinterpret_cast<T *>(calloc(_capacity, sizeof(T))));
-        *this->_data.get() = *new_data;
-        this->_capacity = other._capacity;
-        this->_size = other._size;
-        std::cout << "called set" << std::endl;
-        memcpy(this->_data.get(), other.data(), other.size() * sizeof(T));
-        // std::swap(_data, other._data);
+        memcpy(*this->_data, other.data(), other.size() * sizeof(T));
+        this->_data.swap(other._data);
         return *this;
     } // destructor of other is called to release the resources formerly managed by *this
 
@@ -155,9 +144,7 @@ public:
         {
             set_capacity(this->_capacity + 1024);
         }
-
-        auto x = _data.get(); 
-        x[this->_size] = &value;
+        _data[this->_size] = &value;
         //
         _size++;
     }
