@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <memory>
-#include <memory.h>
 #include <algorithm>
 #include <stdlib.h>
 #include <stdexcept>
@@ -16,9 +15,10 @@ template <typename T>
 struct array
 {
 private:
+    std::allocator<T> _alloc;
     int _capacity = 64;
     int _size = 0;
-    std::shared_ptr<T *> _data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(_capacity, sizeof(T))));
+    T* _data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(_capacity, sizeof(T))));
 
 public:
     /// @brief Default capacity of the array
@@ -39,6 +39,10 @@ public:
         return *this->_data;
     }
 
+    array(std::allocator_arg_t args)
+    {
+    }
+
     array(int size)
     {
         this->_capacity = size;
@@ -57,7 +61,7 @@ public:
 
     array(array<T> const &rhs)
     {
-        this->_size = rhs.size();
+        this->_size = rhs._size;
         this->_capacity = rhs._capacity;
         this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
         auto amt_copied = memcpy(*this->_data.get(), rhs.data(), this->_capacity * sizeof(T));
@@ -82,11 +86,11 @@ public:
     void set_capacity(int cap)
     {
         T *cpy_data = new T[this->_capacity];
-        memcpy(cpy_data, *this->_data.get(), this->_capacity * sizeof(T));
+        memcpy(cpy_data, this->_data.get(), this->_capacity * sizeof(T));
         this->_capacity = cap;
         this->_data.reset();
-        this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(this->_capacity, sizeof(T))));
-        memcpy(*this->_data.get(), cpy_data, this->_capacity * sizeof(T));
+        this->_data = std::make_shared<T *>(reinterpret_cast<T *>(reallocarray(this->_data.get(), this->_capacity, sizeof(T))));
+        memcpy(this->_data.get(), cpy_data, this->_capacity * sizeof(T));
         delete[] cpy_data;
     }
 
@@ -100,20 +104,10 @@ public:
         this->_capacity = other._capacity;
         this->_size = other._size;
         std::cout << "called set" << std::endl;
-        memcpy(*this->_data.get(), other.data(), other.size() * sizeof(T));
+        memcpy(this->_data.get(), other.data(), other.size() * sizeof(T));
         // std::swap(_data, other._data);
         return *this;
     }
-    // copy assignment (copy-and-swap idiom)
-    array<T> &operator=(array<T> &other) noexcept // call copy or move constructor to construct other
-    {
-        if(this->_data.get() == nullptr)
-            this->_data = std::make_shared<T *>(reinterpret_cast<T *>(calloc(_capacity, sizeof(T))));
-
-        memcpy(*this->_data, other.data(), other.size() * sizeof(T));
-        this->_data.swap(other._data);
-        return *this;
-    } // destructor of other is called to release the resources formerly managed by *this
 
     T &operator[](int idx)
     {
@@ -140,11 +134,12 @@ public:
     }
     void push_back(T &&value)
     {
+        auto val = std::make_shared<T>(value);
         if (this->_size > this->_capacity)
         {
             set_capacity(this->_capacity + 1024);
         }
-        _data[this->_size] = &value;
+        memcpy(_data.get()[this->_size], val.get(), sizeof(T));
         //
         _size++;
     }
