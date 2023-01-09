@@ -1,14 +1,16 @@
 #include <iostream>
 #include <vector>
+#include <alloca.h>
+#include <memory_resource>
 #include <memory>
-#include <memory.h>
-#include <string>
+#include <cstring>
 #include <algorithm>
 #include <stdlib.h>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <bitset>
+#include <memory_resource>
 // super fast and optimized array manipulation functions
 // inspired by the incredible std::vector, but way faster
 // and using a power of two instead of a generic size
@@ -17,7 +19,7 @@ template <typename T>
 struct array
 {
 private:
-    std::allocator<T> _alloc;
+    [[nodiscard]] std::allocator<T> _alloc;
     int _capacity = 64;
     int _size = 0;
     T *_data = _alloc.allocate(_capacity);
@@ -71,7 +73,7 @@ public:
     {
         this->_size = __data.size();
         _data = _alloc.allocate(_capacity);
-        memcpy(this->_data, __data.begin(), this->_size * sizeof(T));
+        memcpy(this->_data, __data.begin(), __data.end() - __data.begin());
     }
 
     ~array()
@@ -80,7 +82,6 @@ public:
 
     void set_capacity(int cap)
     {
-        auto old_capacity = this->_capacity;
         T *cpy_data = new T[this->_capacity];
         // memcpy(cpy_data, this->_data, this->_capacity * sizeof(T));
         _alloc.deallocate(_data, 1);
@@ -163,7 +164,7 @@ public:
         }
         //*(this->_data + (this->_size * sizeof(T))) = value;
         // this->_data[this->_size] = value;
-        this->_data[this->_size] = value;
+        _alloc.construct(this->_data[this->_size], value);
 
         //
         _size++;
