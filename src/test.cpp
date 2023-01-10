@@ -1,3 +1,4 @@
+#include "headers/new_array.hpp"
 #include <iostream>
 #include <vector>
 #include <alloca.h>
@@ -10,7 +11,9 @@
 #include <type_traits>
 #include <utility>
 #include <bitset>
+#include <thread>
 #include <memory_resource>
+#include <atomic>
 // super fast and optimized array manipulation functions
 // inspired by the incredible std::vector, but way faster
 // and using a power of two instead of a generic size
@@ -50,7 +53,7 @@ public:
     array(int size)
     {
         this->_capacity = size;
-       // _data = _alloc.allocate(_capacity);
+        // _data = _alloc.allocate(_capacity);
     }
 
     array(const array<T> &&__data)
@@ -182,22 +185,49 @@ public:
     }
 };
 
-int main()
-{
-    array<array<double>> test{};
-    std::cout << "array size: " << sizeof(test) << std::endl;
-    std::vector<std::vector<double>> test2{};
 
+std::atomic<bool> sw = false;
+void test_my_array()
+{
+        check:
+    while(!sw.load())
+        goto check;
+    new_array<double> test(UINT16_MAX);
     for (auto i = 0; i < UINT16_MAX; i++)
     {
-        test.push_back({1});
-        // test2.push_back({i * 0.25});
+        test[i] = 1.;
     }
 
-    std::cout << test[0][0] << std::endl; // 0.001
-    // std::cout << test2[0][0] << std::endl; // 0.002
+    std::cout << test[0] << std::endl; // 0.001
+    test[0] = 0.25;
+    std::cout << test[0] << std::endl; // 0.002
 
-    test[0] = {0.25};
+    std::cout << "finished my vec" << std::endl;
+}
 
-    std::cout << test[0][0] << std::endl; // 0.002
+void test_std_array()
+{
+    check:
+    while(!sw.load())
+        goto check;
+
+    std::vector<double> test{};
+    for (auto i = 0; i < UINT16_MAX; i++)
+    {
+        test.push_back(1.);
+    }
+
+    std::cout << test[0] << std::endl; // 0.001
+    test[0] = 0.25;
+    std::cout << test[0] << std::endl; // 0.002
+
+    std::cout << "finished std vec" << std::endl;
+}
+
+int main()
+{
+    sw.store(true);
+    //std::thread{test_std_array}.detach();
+    std::thread{test_my_array}.detach();
+    //sw.store(true);
 }
