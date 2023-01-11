@@ -65,18 +65,4 @@ struct new_array
     {
         return this->_data[index];
     }
-
-    void set_capacity(std::uint32_t capacity)
-    {
-        if (capacity > this->_capacity)
-        {
-            std::unique_ptr<T> new_data = std::make_unique<T>(capacity);
-            memcpy(new_data.get(), this->_data.get(), sizeof(T) * this->_capacity);
-            delete[] this->_data.get();
-            std::swap(this->_data, new_data);
-            new_data = nullptr;
-            this->_capacity = capacity;
-        }
-    }
-
 };
