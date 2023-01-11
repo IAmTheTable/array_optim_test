@@ -192,10 +192,10 @@ void test_my_array()
         check:
     while(!sw.load())
         goto check;
-    new_array<double> test(UINT16_MAX);
+    new_array<new_array<double>> test(UINT16_MAX);
     for (auto i = 0; i < UINT16_MAX; i++)
     {
-        test[i] = 1.;
+        test[i] = {1.};
     }
 
     std::cout << test[0] << std::endl; // 0.001
@@ -211,7 +211,7 @@ void test_std_array()
     while(!sw.load())
         goto check;
 
-    std::vector<double> test{};
+    std::vector<std::vector<double>> test{};
     for (auto i = 0; i < UINT64_MAX; i++)
     {
         test.push_back(1.);

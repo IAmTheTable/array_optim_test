@@ -11,6 +11,7 @@ struct new_array
     std::uint32_t _capacity = 64;
     T* _data;
 
+    
     new_array(std::uint32_t capacity)
     {
         this->_capacity = capacity;
@@ -43,7 +44,7 @@ struct new_array
         {
             return *this;
         }
-        this->_capacity = other._size;
+        this->_capacity = other._capacity;
         this->_data = new std::unique_ptr<T>[this->_capacity];
         memcpy(this->_data, other._data, sizeof(T) * this->_capacity);
         return *this;
@@ -55,7 +56,7 @@ struct new_array
         {
             return *this;
         }
-        this->_capacity = other._size;
+        this->_capacity = other._capacity;
         this->_data = new std::unique_ptr<T>[this->_capacity];
         memcpy(this->_data, other._data, sizeof(T) * this->_capacity);
         return *this;
