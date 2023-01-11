@@ -212,7 +212,7 @@ void test_std_array()
         goto check;
 
     std::vector<double> test{};
-    for (auto i = 0; i < UINT16_MAX; i++)
+    for (auto i = 0; i < UINT64_MAX; i++)
     {
         test.push_back(1.);
     }
@@ -227,7 +227,7 @@ void test_std_array()
 int main()
 {
     sw.store(true);
-    //std::thread{test_std_array}.detach();
-    std::thread{test_my_array}.detach();
+    std::thread{test_std_array}.detach(); // 0.012s on UINT64
+    //std::thread{test_my_array}.detach(); // 0.008s on UINT64
     //sw.store(true);
 }
