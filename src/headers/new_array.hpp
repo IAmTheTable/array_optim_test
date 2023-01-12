@@ -8,10 +8,14 @@
 template <typename T>
 struct new_array
 {
-    std::uint32_t _capacity = 64;
+    std::uint32_t _capacity = 1;
     T* _data;
 
-    
+    new_array()
+    {
+        this->_data = new T[_capacity];
+    }
+
     new_array(std::uint32_t capacity)
     {
         this->_capacity = capacity;
@@ -20,13 +24,15 @@ struct new_array
 
     new_array(new_array<T> const& other)
     {
-        this->_data = new std::unique_ptr<T>[this->_capacity];
+        this->_capacity = other._capacity;
+        this->_data = new T[this->_capacity];
         memcpy(this->_data, other._data, sizeof(T) * this->_capacity);
     }
 
     new_array(new_array<T> &&other)
     {
-        this->_data = new std::unique_ptr<T>[this->_capacity];
+        this->_capacity = other._capacity;
+        this->_data = new T[this->_capacity];
         memcpy(this->_data, other._data, sizeof(T) * this->_capacity);
     }
 
@@ -37,6 +43,10 @@ struct new_array
         memcpy(this->_data, __data.begin(), sizeof(T) * __data.size());
     }
 
+    ~new_array()
+    {
+        delete[] this->_data;
+    }
 
     new_array<T>& operator=(new_array<T> const& other)
     {
@@ -45,7 +55,7 @@ struct new_array
             return *this;
         }
         this->_capacity = other._capacity;
-        this->_data = new std::unique_ptr<T>[this->_capacity];
+        this->_data = new T[this->_capacity];
         memcpy(this->_data, other._data, sizeof(T) * this->_capacity);
         return *this;
     }
@@ -57,7 +67,7 @@ struct new_array
             return *this;
         }
         this->_capacity = other._capacity;
-        this->_data = new std::unique_ptr<T>[this->_capacity];
+        this->_data = new T[this->_capacity];
         memcpy(this->_data, other._data, sizeof(T) * this->_capacity);
         return *this;
     }
